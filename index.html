@@ -1,317 +1,558 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Personal Secure Gemini Journal</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Personal AI Workspace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
   <style>
-    :root { --bg: #0f172a; --panel: #1e293b; --text: #f8fafc; --accent: #3b82f6; --border: #334155; }
-    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); max-width: 800px; margin: 40px auto; padding: 0 16px; }
-    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
-    .chat-box { height: 320px; overflow-y: auto; border: 1px solid var(--border); padding: 12px; margin-bottom: 12px; border-radius: 6px; background: #020617; }
-    .msg { margin: 8px 0; line-height: 1.5; }
-    .msg.user { color: #60a5fa; font-weight: 600; }
-    .msg.ai { color: #e2e8f0; }
-    input, textarea, button { width: 100%; box-sizing: border-box; margin-top: 8px; padding: 10px; border-radius: 6px; border: 1px solid var(--border); background: #0b0f19; color: #fff; }
-    button { background: var(--accent); font-weight: 600; cursor: pointer; border: none; }
-    button:hover { opacity: 0.9; }
-    .btn-secondary { background: #475569; }
-    .hidden { display: none; }
-    .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; background: #059669; }
-    .row { display: flex; gap: 10px; }
+    :root {
+      --bg-gradient: radial-gradient(circle at 15% 15%, #1e1b4b 0%, #0f172a 50%, #020617 100%);
+      --glass-bg: rgba(30, 41, 59, 0.7);
+      --glass-border: rgba(255, 255, 255, 0.12);
+      --accent-primary: #6366f1;
+      --accent-hover: #4f46e5;
+      --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --card-bg: rgba(15, 23, 42, 0.6);
+      --success: #10b981;
+      --danger: #ef4444;
+      --radius-lg: 24px;
+      --radius-md: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    body {
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Ambient Glowing Orbs */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(100px);
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.5;
+      animation: float 10s infinite alternate ease-in-out;
+    }
+    .orb-1 { width: 400px; height: 400px; background: #6366f1; top: -100px; left: -100px; }
+    .orb-2 { width: 350px; height: 350px; background: #ec4899; bottom: -50px; right: -50px; animation-delay: -5s; }
+
+    @keyframes float {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(40px, 40px) scale(1.1); }
+    }
+
+    /* View Controller */
+    .view {
+      display: none;
+      width: 100%;
+      max-width: 1100px;
+      margin: 20px;
+      position: relative;
+      z-index: 1;
+      opacity: 0;
+      transform: translateY(20px) scale(0.98);
+      transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .view.active {
+      display: block;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    /* Glass Container */
+    .glass-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      padding: 40px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    /* Auth Page Specifics */
+    .auth-container {
+      max-width: 440px;
+      margin: 0 auto;
+    }
+
+    .auth-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .auth-header h1 {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(to right, #ffffff, #cbd5e1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+
+    .auth-header p {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 14px 18px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      color: #fff;
+      font-size: 15px;
+      transition: all 0.25s ease;
+      outline: none;
+    }
+
+    .form-control:focus {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+      background: rgba(15, 23, 42, 0.9);
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 14px;
+      background: var(--accent-gradient);
+      border: none;
+      border-radius: var(--radius-md);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.4);
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 25px -5px rgba(99, 102, 241, 0.5);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    /* Dashboard Layout */
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--glass-border);
+      margin-bottom: 30px;
+    }
+
+    .profile-badge {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .avatar {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: var(--accent-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 18px;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--glass-border);
+      padding: 10px 18px;
+      border-radius: var(--radius-md);
+      color: var(--text-main);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Grid & Widgets */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 768px) {
+      .dashboard-grid { grid-template-columns: 1fr; }
+    }
+
+    .widget-box {
+      background: var(--card-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      height: 380px;
+    }
+
+    .widget-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .chat-history {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-right: 6px;
+      margin-bottom: 16px;
+    }
+
+    .msg {
+      max-width: 80%;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.4;
+      animation: messagePop 0.2s ease-out;
+    }
+
+    @keyframes messagePop {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg.user {
+      align-self: flex-end;
+      background: var(--accent-gradient);
+      color: #fff;
+    }
+
+    .msg.bot {
+      align-self: flex-start;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--glass-border);
+    }
+
+    .input-wrapper {
+      display: flex;
+      gap: 10px;
+    }
+
+    /* Task List */
+    .task-list {
+      flex: 1;
+      overflow-y: auto;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .task-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--glass-border);
+      border-radius: 10px;
+      transition: all 0.2s ease;
+    }
+
+    .task-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .task-item.completed span {
+      text-decoration: line-through;
+      color: var(--text-muted);
+    }
+
+    .task-item button {
+      background: none;
+      border: none;
+      color: var(--danger);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 4px;
+    }
   </style>
 </head>
 <body>
 
-  <h2>🔐 Zero-Trust Gemini Journal</h2>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
 
-  <!-- Auth Panel -->
-  <div id="auth-panel" class="card">
-    <h3>1. Authentication</h3>
-    <input type="email" id="email" placeholder="Email" />
-    <input type="password" id="password" placeholder="Password" />
-    <button id="btn-login">Sign In / Register</button>
-  </div>
-
-  <!-- Vault Unlock / Setup Panel -->
-  <div id="vault-panel" class="card hidden">
-    <h3>2. Security Enclave (Hardware PRF + Recovery)</h3>
-    <div id="vault-status" style="margin-bottom: 12px;">Checking vault status...</div>
-    
-    <div id="setup-section" class="hidden">
-      <p>Configure your biometric passkey + emergency recovery passphrase to generate your zero-knowledge DEK.</p>
-      <input type="password" id="init-passphrase" placeholder="Emergency Recovery Passphrase" />
-      <button id="btn-setup-vault">Register Biometric Passkey & Init Vault</button>
-    </div>
-
-    <div id="unlock-section" class="hidden">
-      <button id="btn-unlock-bio">🔓 Unlock with Biometrics (Touch ID / Windows Hello)</button>
-      <div style="text-align: center; margin: 10px 0;">— OR —</div>
-      <input type="password" id="recovery-passphrase" placeholder="Enter Recovery Passphrase" />
-      <button id="btn-unlock-recovery" class="btn-secondary">Recover with Passphrase</button>
+  <!-- AUTHENTICATION VIEW -->
+  <div id="authView" class="view active">
+    <div class="glass-card auth-container">
+      <div class="auth-header">
+        <h1>Welcome Back</h1>
+        <p>Sign in to access your local workspace</p>
+      </div>
+      <form id="authForm" onsubmit="handleAuth(event)">
+        <div class="form-group">
+          <label>Full Name or Username</label>
+          <input type="text" id="username" class="form-control" placeholder="e.g. Ishaan Thusoo" required />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="password" class="form-control" placeholder="••••••••" required />
+        </div>
+        <button type="submit" class="btn-primary">
+          Sign In
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </button>
+      </form>
     </div>
   </div>
 
-  <!-- Journaling Application -->
-  <div id="journal-panel" class="card hidden">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-      <div><strong>Status:</strong> <span class="badge">Hardware Key In-Memory</span></div>
-      <button id="btn-lock" style="width: auto; padding: 6px 12px;" class="btn-secondary">Lock & Sign Out</button>
-    </div>
+  <!-- MAIN DASHBOARD VIEW -->
+  <div id="dashboardView" class="view">
+    <div class="glass-card">
+      <div class="dashboard-header">
+        <div class="profile-badge">
+          <div class="avatar" id="avatarIcon">U</div>
+          <div>
+            <h2 id="userNameDisplay" style="font-size: 18px; font-weight: 700;">Workspace User</h2>
+            <span style="font-size: 13px; color: var(--success); display: flex; align-items: center; gap: 5px;">
+              ● Local Engine Active
+            </span>
+          </div>
+        </div>
+        <button onclick="handleLogout()" class="btn-secondary">Log Out</button>
+      </div>
 
-    <div id="chat-window" class="chat-box"></div>
-    <textarea id="prompt-input" rows="3" placeholder="Write your reflection or prompt..."></textarea>
-    <div class="row">
-      <button id="btn-send">Send to Gemini</button>
-      <button id="btn-save-journal" style="background: #059669;">Encrypt & Save Entry</button>
-    </div>
+      <div class="dashboard-grid">
+        <!-- Interactive Local Bot (No API) -->
+        <div class="widget-box">
+          <div class="widget-title">
+            <span>Offline Intelligent Agent</span>
+            <span style="font-size: 11px; color: var(--text-muted);">Self-Contained</span>
+          </div>
+          <div class="chat-history" id="chatHistory">
+            <div class="msg bot">Hello! I am your local offline assistant. Ask me anything or run quick math computations.</div>
+          </div>
+          <div class="input-wrapper">
+            <input type="text" id="chatInput" class="form-control" placeholder="Type a message or calculation..." onkeydown="if(event.key === 'Enter') sendLocalMessage()" />
+            <button class="btn-primary" style="width: auto; padding: 0 18px;" onclick="sendLocalMessage()">Send</button>
+          </div>
+        </div>
 
-    <h3 style="margin-top: 24px;">Past Encrypted Entries</h3>
-    <div id="history-list"></div>
+        <!-- Local Task Board -->
+        <div class="widget-box">
+          <div class="widget-title">
+            <span>Project Tasks</span>
+            <span id="taskCount" style="font-size: 12px; color: var(--accent-primary); font-weight: 600;">0 Tasks</span>
+          </div>
+          <ul class="task-list" id="taskList"></ul>
+          <div class="input-wrapper">
+            <input type="text" id="taskInput" class="form-control" placeholder="New task..." onkeydown="if(event.key === 'Enter') addTask()" />
+            <button class="btn-primary" style="width: auto; padding: 0 18px;" onclick="addTask()">Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, collection, addDoc, getDocs, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
-
-    // --- CONFIGURE YOUR FIREBASE SETTINGS ---
-    const firebaseConfig = {
-      apiKey: "YOUR_FIREBASE_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT_ID.appspot.com"
-    };
-
-    const BACKEND_URL = "https://YOUR_REGION-YOUR_PROJECT_ID.cloudfunctions.net/journalChat";
-    const PRF_SALT = new TextEncoder().encode("gemini-journal-prf-salt-v1-00000");
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    let activeDEK = null;
-    let chatHistory = [];
-
-    // --- CRYPTOGRAPHY & WEBAUTHN MODULE ---
-    const bufferToBase64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    const base64ToBuffer = (str) => Uint8Array.from(atob(str.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)).buffer;
-
-    async function deriveKekFromPrf(prfBytes) {
-      const baseKey = await crypto.subtle.importKey("raw", prfBytes, "HKDF", false, ["deriveKey"]);
-      return crypto.subtle.deriveKey(
-        { name: "HKDF", hash: "SHA-256", salt: new Uint8Array(), info: new TextEncoder().encode("biometric-kek-v1") },
-        baseKey, { name: "AES-KW", length: 256 }, false, ["wrapKey", "unwrapKey"]
-      );
+  <script>
+    // Navigation / Page Transition Handler
+    function showPage(pageId) {
+      document.querySelectorAll('.view').forEach(view => {
+        view.classList.remove('active');
+      });
+      setTimeout(() => {
+        const target = document.getElementById(pageId);
+        if (target) {
+          target.classList.add('active');
+        }
+      }, 50);
     }
 
-    async function deriveKekFromPassphrase(passphrase, salt) {
-      const enc = new TextEncoder();
-      const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(passphrase), "PBKDF2", false, ["deriveKey"]);
-      return crypto.subtle.deriveKey(
-        { name: "PBKDF2", salt, iterations: 310000, hash: "SHA-256" },
-        keyMaterial, { name: "AES-KW", length: 256 }, false, ["wrapKey", "unwrapKey"]
-      );
+    // Authentication Logic (Purely Client-Side, No APIs)
+    function handleAuth(event) {
+      event.preventDefault();
+      const userField = document.getElementById('username').value.trim();
+      if (!userField) return;
+
+      localStorage.setItem('local_app_user', userField);
+      loadDashboard(userField);
+      showPage('dashboardView');
     }
 
-    async function encryptEntry(data, dek) {
-      const iv = crypto.getRandomValues(new Uint8Array(12));
-      const encoded = new TextEncoder().encode(JSON.stringify(data));
-      const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, dek, encoded);
-      return { encryptedData: bufferToBase64(ciphertext), iv: bufferToBase64(iv) };
+    function handleLogout() {
+      localStorage.removeItem('local_app_user');
+      document.getElementById('username').value = '';
+      document.getElementById('password').value = '';
+      showPage('authView');
     }
 
-    async function decryptEntry(encryptedBase64, ivBase64, dek) {
-      const decrypted = await crypto.subtle.decrypt(
-        { name: "AES-GCM", iv: base64ToBuffer(ivBase64) },
-        dek,
-        base64ToBuffer(encryptedBase64)
-      );
-      return JSON.parse(new TextDecoder().decode(decrypted));
+    function loadDashboard(name) {
+      document.getElementById('userNameDisplay').innerText = name;
+      document.getElementById('avatarIcon').innerText = name.charAt(0).toUpperCase();
+      renderTasks();
     }
 
-    // --- UI FLOW & STATE MANAGEMENT ---
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        document.getElementById("auth-panel").classList.add("hidden");
-        document.getElementById("vault-panel").classList.remove("hidden");
-        await checkVaultStatus(user.uid);
-      } else {
-        document.getElementById("auth-panel").classList.remove("hidden");
-        document.getElementById("vault-panel").classList.add("hidden");
-        document.getElementById("journal-panel").classList.add("hidden");
-        activeDEK = null;
+    // Local Logic Bot (Rule-based & arithmetic engine, zero API calls)
+    function sendLocalMessage() {
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const history = document.getElementById('chatHistory');
+      
+      // Render user message
+      const userMsg = document.createElement('div');
+      userMsg.className = 'msg user';
+      userMsg.innerText = text;
+      history.appendChild(userMsg);
+      input.value = '';
+
+      // Generate local response
+      setTimeout(() => {
+        const botMsg = document.createElement('div');
+        botMsg.className = 'msg bot';
+        botMsg.innerText = generateLocalResponse(text);
+        history.appendChild(botMsg);
+        history.scrollTop = history.scrollHeight;
+      }, 300);
+
+      history.scrollTop = history.scrollHeight;
+    }
+
+    function generateLocalResponse(query) {
+      const lower = query.toLowerCase();
+
+      // Math Evaluator
+      try {
+        if (/^[0-9+\-*/().\s^%]+$/.test(query) && query.length > 1) {
+          return `Result: ${Function('"use strict"; return (' + query + ')')()}`;
+        }
+      } catch (e) {}
+
+      if (lower.includes('hello') || lower.includes('hi')) return "Greetings! How can I assist you with your local tasks today?";
+      if (lower.includes('time')) return `Current local time is: ${new Date().toLocaleTimeString()}`;
+      if (lower.includes('date')) return `Today's date is: ${new Date().toLocaleDateString()}`;
+      if (lower.includes('clear')) {
+        document.getElementById('chatHistory').innerHTML = '';
+        return "Chat cleared.";
+      }
+      return `Processed offline: "${query}". (Running locally with zero external network calls).`;
+    }
+
+    // Task Management Logic (Local Storage)
+    function getTasks() {
+      return JSON.parse(localStorage.getItem('local_tasks') || '[]');
+    }
+
+    function saveTasks(tasks) {
+      localStorage.setItem('local_tasks', JSON.stringify(tasks));
+      renderTasks();
+    }
+
+    function addTask() {
+      const input = document.getElementById('taskInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const tasks = getTasks();
+      tasks.push({ id: Date.now(), text: text, completed: false });
+      saveTasks(tasks);
+      input.value = '';
+    }
+
+    function toggleTask(id) {
+      const tasks = getTasks().map(t => t.id === id ? { ...t, completed: !t.completed } : t);
+      saveTasks(tasks);
+    }
+
+    function deleteTask(id) {
+      const tasks = getTasks().filter(t => t.id !== id);
+      saveTasks(tasks);
+    }
+
+    function renderTasks() {
+      const tasks = getTasks();
+      const list = document.getElementById('taskList');
+      const count = document.getElementById('taskCount');
+      list.innerHTML = '';
+      count.innerText = `${tasks.length} Tasks`;
+
+      tasks.forEach(task => {
+        const li = document.createElement('li');
+        li.className = `task-item ${task.completed ? 'completed' : ''}`;
+        li.innerHTML = `
+          <span style="cursor: pointer;" onclick="toggleTask(${task.id})">
+            ${task.completed ? '✓ ' : '○ '} ${task.text}
+          </span>
+          <button onclick="deleteTask(${task.id})">✕</button>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    // Auto-login persistence check
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedUser = localStorage.getItem('local_app_user');
+      if (savedUser) {
+        loadDashboard(savedUser);
+        showPage('dashboardView');
       }
     });
-
-    async function checkVaultStatus(uid) {
-      const snap = await getDoc(doc(db, "users", uid));
-      if (!snap.exists() || !snap.data().vaultConfig) {
-        document.getElementById("setup-section").classList.remove("hidden");
-        document.getElementById("unlock-section").classList.add("hidden");
-        document.getElementById("vault-status").innerText = "No vault found. Initialize below:";
-      } else {
-        document.getElementById("setup-section").classList.add("hidden");
-        document.getElementById("unlock-section").classList.remove("hidden");
-        document.getElementById("vault-status").innerText = "Vault encrypted. Choose unlock method:";
-      }
-    }
-
-    // Sign in / Sign up
-    document.getElementById("btn-login").onclick = async () => {
-      const email = document.getElementById("email").value;
-      const pass = document.getElementById("password").value;
-      try {
-        await signInWithEmailAndPassword(auth, email, pass);
-      } catch {
-        await createUserWithEmailAndPassword(auth, email, pass);
-      }
-    };
-
-    // Setup Vault: WebAuthn PRF + Passphrase
-    document.getElementById("btn-setup-vault").onclick = async () => {
-      const pass = document.getElementById("init-passphrase").value;
-      if (!pass) return alert("Please specify a recovery passphrase");
-
-      const user = auth.currentUser;
-      const cred = await navigator.credentials.create({
-        publicKey: {
-          challenge: crypto.getRandomValues(new Uint8Array(32)),
-          rp: { name: "Gemini Journal", id: window.location.hostname },
-          user: { id: new TextEncoder().encode(user.uid), name: user.email, displayName: user.email },
-          pubKeyCredParams: [{ alg: -7, type: "public-key" }],
-          authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
-          extensions: { prf: { eval: { first: PRF_SALT } } }
-        }
-      });
-
-      const prfBytes = cred.getClientExtensionResults().prf.results.first;
-      const dek = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
-      
-      const bioKek = await deriveKekFromPrf(prfBytes);
-      const wrappedBio = await crypto.subtle.wrapKey("raw", dek, bioKek, { name: "AES-KW" });
-
-      const salt = crypto.getRandomValues(new Uint8Array(16));
-      const passKek = await deriveKekFromPassphrase(pass, salt);
-      const wrappedPass = await crypto.subtle.wrapKey("raw", dek, passKek, { name: "AES-KW" });
-
-      localStorage.setItem(`cred_id_${user.uid}`, bufferToBase64(cred.rawId));
-      await setDoc(doc(db, "users", user.uid), {
-        vaultConfig: {
-          wrappedDEK_Bio: bufferToBase64(wrappedBio),
-          wrappedDEK_Pass: bufferToBase64(wrappedPass),
-          passphraseSalt: bufferToBase64(salt)
-        }
-      }, { merge: true });
-
-      activeDEK = dek;
-      openJournal();
-    };
-
-    // Unlock with Biometrics
-    document.getElementById("btn-unlock-bio").onclick = async () => {
-      const user = auth.currentUser;
-      const credId = localStorage.getItem(`cred_id_${user.uid}`);
-      const snap = await getDoc(doc(db, "users", user.uid));
-      const config = snap.data().vaultConfig;
-
-      const assertion = await navigator.credentials.get({
-        publicKey: {
-          challenge: crypto.getRandomValues(new Uint8Array(32)),
-          rpId: window.location.hostname,
-          allowCredentials: [{ id: base64ToBuffer(credId), type: "public-key" }],
-          userVerification: "required",
-          extensions: { prf: { eval: { first: PRF_SALT } } }
-        }
-      });
-
-      const prfBytes = assertion.getClientExtensionResults().prf.results.first;
-      const bioKek = await deriveKekFromPrf(prfBytes);
-      activeDEK = await crypto.subtle.unwrapKey(
-        "raw", base64ToBuffer(config.wrappedDEK_Bio), bioKek, { name: "AES-KW" }, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]
-      );
-      openJournal();
-    };
-
-    // Recover with Passphrase
-    document.getElementById("btn-unlock-recovery").onclick = async () => {
-      const pass = document.getElementById("recovery-passphrase").value;
-      const snap = await getDoc(doc(db, "users", auth.currentUser.uid));
-      const config = snap.data().vaultConfig;
-
-      const passKek = await deriveKekFromPassphrase(pass, base64ToBuffer(config.passphraseSalt));
-      activeDEK = await crypto.subtle.unwrapKey(
-        "raw", base64ToBuffer(config.wrappedDEK_Pass), passKek, { name: "AES-KW" }, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]
-      );
-      openJournal();
-    };
-
-    function openJournal() {
-      document.getElementById("vault-panel").classList.add("hidden");
-      document.getElementById("journal-panel").classList.remove("hidden");
-      loadHistory();
-    }
-
-    // Gemini Chat Interaction
-    document.getElementById("btn-send").onclick = async () => {
-      const promptInput = document.getElementById("prompt-input");
-      const prompt = promptInput.value.trim();
-      if (!prompt) return;
-
-      const chatWindow = document.getElementById("chat-window");
-      chatWindow.innerHTML += `<div class="msg user">You: ${prompt}</div>`;
-      promptInput.value = "";
-
-      const token = await auth.currentUser.getIdToken();
-      const res = await fetch(BACKEND_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ prompt, history: chatHistory })
-      });
-      const data = await res.json();
-      
-      chatWindow.innerHTML += `<div class="msg ai">Gemini: ${data.reply}</div>`;
-      chatWindow.scrollTop = chatWindow.scrollHeight;
-
-      chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-      chatHistory.push({ role: "model", parts: [{ text: data.reply }] });
-    };
-
-    // Save Encrypted Entry to Firestore
-    document.getElementById("btn-save-journal").onclick = async () => {
-      if (!chatHistory.length) return alert("Chat history is empty.");
-      const payload = await encryptEntry(chatHistory, activeDEK);
-      const user = auth.currentUser;
-
-      await addDoc(collection(db, "users", user.uid, "journals"), {
-        userId: user.uid,
-        ...payload,
-        createdAt: serverTimestamp()
-      });
-
-      alert("Entry encrypted with your hardware-backed DEK and saved to Firestore.");
-      loadHistory();
-    };
-
-    async function loadHistory() {
-      const historyList = document.getElementById("history-list");
-      historyList.innerHTML = "";
-      const q = query(collection(db, "users", auth.currentUser.uid, "journals"), orderBy("createdAt", "desc"));
-      const snap = await getDocs(q);
-
-      snap.forEach(async (docSnap) => {
-        const item = docSnap.data();
-        try {
-          const decrypted = await decryptEntry(item.encryptedData, item.iv, activeDEK);
-          const firstExchange = decrypted[0]?.parts[0]?.text || "Saved Session";
-          historyList.innerHTML += `<div class="card" style="padding: 10px; font-size: 14px;"><strong>${docSnap.id}</strong>: ${firstExchange}</div>`;
-        } catch {
-          historyList.innerHTML += `<div class="card" style="padding: 10px; font-size: 14px; color: #f87171;">Decryption Failed (Invalid Key)</div>`;
-        }
-      });
-    }
-
-    document.getElementById("btn-lock").onclick = () => signOut(auth);
   </script>
 </body>
 </html>
