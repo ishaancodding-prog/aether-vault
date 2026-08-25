@@ -1,695 +1,296 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Developer Portfolio & Workspace</title>
-  
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gemini Journal</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #faf8f5;
+    color: #2b2620;
+  }
+  .loading, .signin-screen {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 12px;
+    padding: 24px;
+  }
+  button {
+    background: #7c5cff;
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 15px;
+  }
+  button:hover { background: #6a4ce0; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  <style>
-    :root {
-      --bg-dark: #070913;
-      --bg-surface: rgba(18, 20, 36, 0.7);
-      --border-color: rgba(255, 255, 255, 0.08);
-      --accent-purple: #8b5cf6;
-      --accent-indigo: #6366f1;
-      --accent-gradient: linear-gradient(135deg, #a855f7 0%, #6366f1 100%);
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
-      --tile-bg: #141824;
-      --tile-border: #0a0d14;
-    }
+  .journal {
+    max-width: 640px;
+    margin: 0 auto;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .journal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid #e8e2d8;
+  }
+  .muted { color: #8a8072; font-size: 14px; }
+  .signout-btn {
+    background: none;
+    border: 1px solid #d8d0c2;
+    color: #2b2620;
+    border-radius: 6px;
+    padding: 6px 12px;
+  }
+  .signout-btn:hover { background: #f0ebe1; }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-    }
+  .entries {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .bubble {
+    max-width: 75%;
+    padding: 10px 14px;
+    border-radius: 14px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+  }
+  .bubble.user {
+    align-self: flex-end;
+    background: #7c5cff;
+    color: white;
+    border-bottom-right-radius: 4px;
+  }
+  .bubble.model {
+    align-self: flex-start;
+    background: #fff;
+    border: 1px solid #e8e2d8;
+    border-bottom-left-radius: 4px;
+  }
+  .bubble.typing { opacity: 0.5; }
 
-    body {
-      background-color: var(--bg-dark);
-      color: var(--text-main);
-      overflow-x: hidden;
-      min-height: 100vh;
-      line-height: 1.6;
-    }
+  .error { color: #b3261e; padding: 0 16px; font-size: 14px; }
 
-    /* Floating Ambient Glow Orbs */
-    .orb {
-      position: fixed;
-      border-radius: 50%;
-      filter: blur(120px);
-      z-index: 0;
-      pointer-events: none;
-      opacity: 0.35;
-      animation: floatOrb 12s infinite alternate ease-in-out;
-    }
-    .orb-1 { width: 500px; height: 500px; background: #7c3aed; top: -150px; left: -150px; }
-    .orb-2 { width: 450px; height: 450px; background: #ec4899; bottom: 5%; right: -100px; animation-delay: -6s; }
-
-    @keyframes floatOrb {
-      0% { transform: translate(0, 0) scale(1); }
-      100% { transform: translate(60px, 50px) scale(1.15); }
-    }
-
-    /* Navigation */
-    nav {
-      position: fixed;
-      top: 0;
-      width: 100%;
-      z-index: 100;
-      background: rgba(7, 9, 19, 0.8);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border-bottom: 1px solid var(--border-color);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 18px 8%;
-    }
-
-    .nav-logo {
-      font-weight: 800;
-      font-size: 20px;
-      letter-spacing: -0.5px;
-      background: var(--accent-gradient);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .nav-links {
-      display: flex;
-      gap: 28px;
-      list-style: none;
-    }
-
-    .nav-links a {
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 500;
-      transition: color 0.2s;
-    }
-
-    .nav-links a:hover {
-      color: var(--text-main);
-    }
-
-    /* Layout Wrapper */
-    main {
-      position: relative;
-      z-index: 1;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 140px 24px 80px;
-      display: flex;
-      flex-direction: column;
-      gap: 120px;
-    }
-
-    /* Hero Section */
-    .hero {
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 20px;
-    }
-
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 14px;
-      border-radius: 100px;
-      background: rgba(139, 92, 246, 0.1);
-      border: 1px solid rgba(139, 92, 246, 0.3);
-      font-size: 13px;
-      color: #c4b5fd;
-      font-weight: 600;
-    }
-
-    .hero h1 {
-      font-size: clamp(2.5rem, 5vw, 4.2rem);
-      font-weight: 800;
-      line-height: 1.15;
-      letter-spacing: -1.5px;
-    }
-
-    .gradient-text {
-      background: var(--accent-gradient);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .typing-container {
-      font-size: clamp(1.2rem, 2.5vw, 1.8rem);
-      color: var(--text-muted);
-      font-weight: 500;
-      min-height: 40px;
-    }
-
-    .typed-text {
-      color: var(--text-main);
-      border-right: 2px solid var(--accent-purple);
-      padding-right: 4px;
-      animation: blink 0.8s infinite;
-    }
-
-    @keyframes blink {
-      0%, 100% { border-color: transparent; }
-      50% { border-color: var(--accent-purple); }
-    }
-
-    .btn-group {
-      display: flex;
-      gap: 16px;
-      margin-top: 10px;
-    }
-
-    .btn {
-      padding: 12px 24px;
-      border-radius: 12px;
-      font-weight: 600;
-      font-size: 14px;
-      text-decoration: none;
-      cursor: pointer;
-      transition: all 0.25s ease;
-      border: none;
-    }
-
-    .btn-primary {
-      background: var(--accent-gradient);
-      color: #fff;
-      box-shadow: 0 10px 25px -5px rgba(124, 58, 237, 0.4);
-    }
-
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 15px 30px -5px rgba(124, 58, 237, 0.6);
-    }
-
-    .btn-secondary {
-      background: rgba(255, 255, 255, 0.05);
-      color: var(--text-main);
-      border: 1px solid var(--border-color);
-    }
-
-    .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.1);
-    }
-
-    /* Section Styles */
-    .section-title {
-      font-size: 28px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      margin-bottom: 12px;
-      text-align: center;
-    }
-
-    .section-subtitle {
-      color: var(--text-muted);
-      text-align: center;
-      margin-bottom: 40px;
-      font-size: 15px;
-    }
-
-    /* Split-Flap Board Section */
-    .board-container {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-color);
-      backdrop-filter: blur(20px);
-      border-radius: 20px;
-      padding: 30px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 24px;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
-    }
-
-    .board-frame {
-      background: #0d111a;
-      border: 2px solid #232936;
-      padding: 20px;
-      border-radius: 12px;
-      width: 100%;
-      overflow-x: auto;
-    }
-
-    .board-grid {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      width: max-content;
-      margin: 0 auto;
-    }
-
-    .board-row {
-      display: flex;
-      gap: 5px;
-      justify-content: center;
-    }
-
-    .flap-tile {
-      position: relative;
-      width: 28px;
-      height: 42px;
-      background: var(--tile-bg);
-      border-radius: 4px;
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 24px;
-      font-weight: bold;
-      line-height: 42px;
-      text-align: center;
-      color: #fff;
-      perspective: 300px;
-      user-select: none;
-      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
-    }
-
-    .flap-tile::after {
-      content: "";
-      position: absolute;
-      top: 50%;
-      left: 0;
-      width: 100%;
-      height: 1px;
-      background: var(--tile-border);
-      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05);
-      z-index: 5;
-    }
-
-    .flap-tile.flipping {
-      animation: flipFlap 0.12s linear;
-    }
-
-    @keyframes flipFlap {
-      0% { transform: rotateX(0deg); }
-      50% { transform: rotateX(-90deg); filter: brightness(0.6); }
-      100% { transform: rotateX(0deg); }
-    }
-
-    .board-controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      justify-content: center;
-      width: 100%;
-    }
-
-    /* Projects Grid */
-    .projects-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 24px;
-    }
-
-    .project-card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-color);
-      border-radius: 16px;
-      padding: 28px;
-      transition: all 0.3s ease;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-
-    .project-card:hover {
-      transform: translateY(-6px);
-      border-color: rgba(139, 92, 246, 0.4);
-      box-shadow: 0 20px 40px -15px rgba(124, 58, 237, 0.2);
-    }
-
-    .project-card h3 {
-      font-size: 20px;
-      font-weight: 700;
-      margin-bottom: 10px;
-    }
-
-    .project-card p {
-      color: var(--text-muted);
-      font-size: 14px;
-      margin-bottom: 20px;
-    }
-
-    .tag-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 24px;
-    }
-
-    .tag {
-      font-size: 12px;
-      background: rgba(255, 255, 255, 0.05);
-      padding: 4px 10px;
-      border-radius: 6px;
-      color: #c4b5fd;
-      border: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
-    /* Analytics Bar */
-    .analytics-panel {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-color);
-      border-radius: 16px;
-      padding: 20px 28px;
-      display: flex;
-      justify-content: space-around;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 20px;
-      text-align: center;
-    }
-
-    .metric-value {
-      font-size: 24px;
-      font-weight: 800;
-      color: var(--accent-purple);
-    }
-
-    .metric-label {
-      font-size: 12px;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-  </style>
+  .composer {
+    display: flex;
+    gap: 8px;
+    padding: 16px;
+    border-top: 1px solid #e8e2d8;
+  }
+  .composer textarea {
+    flex: 1;
+    resize: none;
+    border: 1px solid #d8d0c2;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 15px;
+    font-family: inherit;
+  }
+  #app { display: none; }
+</style>
 </head>
 <body>
 
-  <div class="orb orb-1"></div>
-  <div class="orb orb-2"></div>
+<div id="loading" class="loading">Loading…</div>
 
-  <!-- Navbar -->
-  <nav>
-    <div class="nav-logo">PORTFOLIO.AI</div>
-    <ul class="nav-links">
-      <li><a href="#about">About</a></li>
-      <li><a href="#board">Flap Board</a></li>
-      <li><a href="#projects">Projects</a></li>
-    </ul>
-  </nav>
+<div id="signin" class="signin-screen" style="display:none">
+  <h1>Your Private Gemini Journal</h1>
+  <p>Sign in to start journaling. Your entries are visible only to you.</p>
+  <button id="signin-btn">Sign in with Google</button>
+</div>
 
-  <main>
-    <!-- Hero Section -->
-    <section class="hero" id="about">
-      <div class="hero-badge">⚡ Next-Gen Performance & Design</div>
-      <h1>Building the Future with <br><span class="gradient-text">Clean Code & High Precision</span></h1>
-      
-      <div class="typing-container">
-        I am a <span class="typed-text" id="typewriter"></span>
-      </div>
+<div id="app" class="journal">
+  <header class="journal-header">
+    <div>
+      <strong id="user-name"></strong>
+      <span class="muted" id="user-email"></span>
+    </div>
+    <button class="signout-btn" id="signout-btn">Sign out</button>
+  </header>
 
-      <div class="btn-group">
-        <a href="#projects" class="btn btn-primary">View Showcase</a>
-        <a href="#board" class="btn btn-secondary">Interactive Board</a>
-      </div>
-    </section>
+  <div class="entries" id="entries">
+    <p class="muted" id="empty-msg">Nothing here yet. Write whatever's on your mind.</p>
+  </div>
 
-    <!-- Split-Flap Departure Board Section -->
-    <section id="board">
-      <h2 class="section-title">Split-Flap Mechanical Display</h2>
-      <p class="section-subtitle">Real-time mechanical synthesis with dynamic state transitions</p>
-      
-      <div class="board-container">
-        <div class="board-frame">
-          <div id="boardGrid" class="board-grid"></div>
-        </div>
+  <div class="error" id="error" style="display:none"></div>
 
-        <div class="board-controls">
-          <button class="btn btn-secondary" id="prevBtn">◄ PREV</button>
-          <button class="btn btn-secondary" id="toggleBtn">❚❚ PAUSE</button>
-          <button class="btn btn-secondary" id="nextBtn">NEXT ►</button>
-          <button class="btn btn-secondary" id="audioToggle">🔊 SOUND: ON</button>
-        </div>
-      </div>
-    </section>
+  <form class="composer" id="composer">
+    <textarea id="draft" rows="2" placeholder="What's on your mind today?"></textarea>
+    <button type="submit" id="send-btn">Send</button>
+  </form>
+</div>
 
-    <!-- Project Showcase -->
-    <section id="projects">
-      <h2 class="section-title">Featured Projects</h2>
-      <p class="section-subtitle">Scalable, secure, and production-ready applications</p>
-      
-      <div class="projects-grid">
-        <div class="project-card">
-          <div>
-            <h3>Secure Gemini Journal</h3>
-            <p>Cloud Run Express proxy with Firebase Auth token verification, Secret Manager integration, and Firestore path isolation.</p>
-            <div class="tag-list">
-              <span class="tag">Express</span>
-              <span class="tag">Cloud Run</span>
-              <span class="tag">Gemini API</span>
-              <span class="tag">Firebase</span>
-            </div>
-          </div>
-          <a href="#" class="btn btn-secondary" style="text-align: center;">View Project</a>
-        </div>
+<script type="module">
+  // ---------------------------------------------------------------------
+  // Firebase client config. NOT a secret — safe to ship in this HTML file.
+  // Real access control is Firestore Rules + the Cloud Function's auth
+  // check (see functions/index.js), not hiding these values.
+  // Fill these in from Firebase Console > Project Settings > General.
+  // ---------------------------------------------------------------------
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID",
+  };
 
-        <div class="project-card">
-          <div>
-            <h3>Mechanical Board UI</h3>
-            <p>Retro Split-Flap departure board built with Web Audio API sound synthesis and CSS 3D transform animations.</p>
-            <div class="tag-list">
-              <span class="tag">JavaScript</span>
-              <span class="tag">Web Audio API</span>
-              <span class="tag">CSS 3D</span>
-            </div>
-          </div>
-          <a href="#" class="btn btn-secondary" style="text-align: center;">View Project</a>
-        </div>
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+  import {
+    getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
+  } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
+  import {
+    getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp,
+  } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+  import {
+    getFunctions, httpsCallable,
+  } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-functions.js";
 
-        <div class="project-card">
-          <div>
-            <h3>Zero-API Local Studio</h3>
-            <p>Offline browser-based productivity dashboard powered entirely by localStorage and mathematical logic evaluation.</p>
-            <div class="tag-list">
-              <span class="tag">Vanilla JS</span>
-              <span class="tag">LocalStorage</span>
-              <span class="tag">Glassmorphism</span>
-            </div>
-          </div>
-          <a href="#" class="btn btn-secondary" style="text-align: center;">View Project</a>
-        </div>
-      </div>
-    </section>
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const functions = getFunctions(app);
+  const googleProvider = new GoogleAuthProvider();
+  const chatWithGemini = httpsCallable(functions, "chatWithGemini");
 
-    <!-- Performance & Analytics Panel -->
-    <section>
-      <div class="analytics-panel">
-        <div>
-          <div class="metric-value">99.8%</div>
-          <div class="metric-label">Performance Score</div>
-        </div>
-        <div>
-          <div class="metric-value" id="loadTimeMetric">-- ms</div>
-          <div class="metric-label">Dom Load Time</div>
-        </div>
-        <div>
-          <div class="metric-value">0 APIs</div>
-          <div class="metric-label">External Dependencies</div>
-        </div>
-      </div>
-    </section>
-  </main>
+  // -- DOM refs ----------------------------------------------------------
+  const $loading = document.getElementById("loading");
+  const $signin = document.getElementById("signin");
+  const $app = document.getElementById("app");
+  const $signinBtn = document.getElementById("signin-btn");
+  const $signoutBtn = document.getElementById("signout-btn");
+  const $userName = document.getElementById("user-name");
+  const $userEmail = document.getElementById("user-email");
+  const $entries = document.getElementById("entries");
+  const $emptyMsg = document.getElementById("empty-msg");
+  const $composer = document.getElementById("composer");
+  const $draft = document.getElementById("draft");
+  const $sendBtn = document.getElementById("send-btn");
+  const $error = document.getElementById("error");
 
-  <script>
-    // 1. Dynamic Typing Animation
-    const roles = ["Full-Stack Engineer", "Cloud Solutions Architect", "AI Integration Specialist", "UI/UX Craftsman"];
-    let roleIndex = 0;
-    let charIndex = 0;
-    let isDeleting = false;
-    const typewriterEl = document.getElementById("typewriter");
+  let currentEntries = [];
+  let unsubscribeEntries = null;
+  let sending = false;
 
-    function typeEffect() {
-      const currentRole = roles[roleIndex];
-      if (isDeleting) {
-        typewriterEl.textContent = currentRole.substring(0, charIndex - 1);
-        charIndex--;
-      } else {
-        typewriterEl.textContent = currentRole.substring(0, charIndex + 1);
-        charIndex++;
-      }
+  // -- Auth ----------------------------------------------------------------
+  $signinBtn.addEventListener("click", () => {
+    signInWithPopup(auth, googleProvider).catch((err) =>
+      console.error("Sign-in failed:", err)
+    );
+  });
+  $signoutBtn.addEventListener("click", () => signOut(auth));
 
-      let speed = isDeleting ? 40 : 80;
+  onAuthStateChanged(auth, (user) => {
+    $loading.style.display = "none";
+    if (unsubscribeEntries) { unsubscribeEntries(); unsubscribeEntries = null; }
 
-      if (!isDeleting && charIndex === currentRole.length) {
-        speed = 2000;
-        isDeleting = true;
-      } else if (isDeleting && charIndex === 0) {
-        isDeleting = false;
-        roleIndex = (roleIndex + 1) % roles.length;
-        speed = 500;
-      }
-
-      setTimeout(typeEffect, speed);
+    if (user) {
+      $signin.style.display = "none";
+      $app.style.display = "flex";
+      $userName.textContent = user.displayName || "";
+      $userEmail.textContent = user.email ? " — " + user.email : "";
+      subscribeToEntries(user.uid);
+    } else {
+      $app.style.display = "none";
+      $signin.style.display = "flex";
+      currentEntries = [];
+      renderEntries();
     }
-    typeEffect();
+  });
 
-    // 2. Split-Flap Board Logic
-    const MESSAGES = [
-      "STAY HUNGRY \nSTAY IN BED \n- STEVE JOBS",
-      "WHAT DID YOU GET \nDONE THIS WEEK?",
-      "DEPLOYING SYSTEMS \nTO CLOUD RUN...",
-      "DONT WORRY \nBE HAPPY FFS.",
-      "SECURE PROXIES \nPOWERED BY GEMINI"
-    ];
+  // -- Isolated storage: scoped to /users/{uid}/entries only --------------
+  function entriesRef(uid) {
+    return collection(db, "users", uid, "entries");
+  }
 
-    const ROWS = 3;
-    const COLS = 20;
-    const CHAR_SET = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,!?:;/@#$%^&*()-_+=$";
-
-    let currentMessageIndex = 0;
-    let isAutoPlaying = true;
-    let intervalTimer = null;
-    let isAudioEnabled = true;
-    let currentMatrix = Array.from({ length: ROWS }, () => Array(COLS).fill(" "));
-
-    const boardGrid = document.getElementById("boardGrid");
-    const toggleBtn = document.getElementById("toggleBtn");
-    const audioToggle = document.getElementById("audioToggle");
-
-    // Synthesized Sound (Web Audio API)
-    let audioCtx = null;
-    function playFlapSound() {
-      if (!isAudioEnabled) return;
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(130, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.035);
-      
-      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.035);
-      
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.035);
-    }
-
-    function initBoard() {
-      boardGrid.innerHTML = "";
-      for (let r = 0; r < ROWS; r++) {
-        const row = document.createElement("div");
-        row.className = "board-row";
-        for (let c = 0; c < COLS; c++) {
-          const tile = document.createElement("div");
-          tile.className = "flap-tile";
-          tile.id = `tile-${r}-${c}`;
-          tile.textContent = " ";
-          row.appendChild(tile);
-        }
-        boardGrid.appendChild(row);
-      }
-    }
-
-    function formatText(text) {
-      const lines = text.toUpperCase().split("\n");
-      const matrix = [];
-      for (let r = 0; r < ROWS; r++) {
-        const line = lines[r] || "";
-        matrix.push(line.padEnd(COLS, " ").slice(0, COLS).split(""));
-      }
-      return matrix;
-    }
-
-    function animateTile(r, c, targetChar) {
-      const tile = document.getElementById(`tile-${r}-${c}`);
-      let currentChar = currentMatrix[r][c];
-      if (currentChar === targetChar) return;
-
-      let idx = CHAR_SET.indexOf(currentChar);
-      if (idx === -1) idx = 0;
-
-      function step() {
-        idx = (idx + 1) % CHAR_SET.length;
-        const nextChar = CHAR_SET[idx];
-
-        tile.textContent = nextChar;
-        tile.classList.remove("flipping");
-        void tile.offsetWidth;
-        tile.classList.add("flipping");
-
-        if (Math.random() > 0.7) playFlapSound();
-
-        if (nextChar !== targetChar) {
-          setTimeout(step, 35 + Math.random() * 20);
-        } else {
-          currentMatrix[r][c] = targetChar;
-          tile.classList.remove("flipping");
-        }
-      }
-      step();
-    }
-
-    function updateBoard(text) {
-      const targetMatrix = formatText(text);
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          setTimeout(() => animateTile(r, c, targetMatrix[r][c]), (r * COLS + c) * 12);
-        }
-      }
-    }
-
-    function nextMsg() {
-      currentMessageIndex = (currentMessageIndex + 1) % MESSAGES.length;
-      updateBoard(MESSAGES[currentMessageIndex]);
-    }
-
-    function prevMsg() {
-      currentMessageIndex = (currentMessageIndex - 1 + MESSAGES.length) % MESSAGES.length;
-      updateBoard(MESSAGES[currentMessageIndex]);
-    }
-
-    function startLoop() {
-      clearInterval(intervalTimer);
-      intervalTimer = setInterval(nextMsg, 6000);
-      toggleBtn.textContent = "❚❚ PAUSE";
-      isAutoPlaying = true;
-    }
-
-    function stopLoop() {
-      clearInterval(intervalTimer);
-      toggleBtn.textContent = "► PLAY";
-      isAutoPlaying = false;
-    }
-
-    toggleBtn.addEventListener("click", () => isAutoPlaying ? stopLoop() : startLoop());
-    document.getElementById("nextBtn").addEventListener("click", () => { nextMsg(); if (isAutoPlaying) startLoop(); });
-    document.getElementById("prevBtn").addEventListener("click", () => { prevMsg(); if (isAutoPlaying) startLoop(); });
-    audioToggle.addEventListener("click", () => {
-      isAudioEnabled = !isAudioEnabled;
-      audioToggle.textContent = isAudioEnabled ? "🔊 SOUND: ON" : "🔇 SOUND: OFF";
+  function subscribeToEntries(uid) {
+    const q = query(entriesRef(uid), orderBy("createdAt", "asc"));
+    unsubscribeEntries = onSnapshot(q, (snap) => {
+      currentEntries = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      renderEntries();
     });
+  }
 
-    // 3. Client Performance Telemetry
-    window.addEventListener("load", () => {
-      initBoard();
-      updateBoard(MESSAGES[0]);
-      startLoop();
+  async function saveEntry(uid, role, text) {
+    await addDoc(entriesRef(uid), { role, text, createdAt: serverTimestamp() });
+  }
 
-      setTimeout(() => {
-        const perfData = performance.timing;
-        const pageLoadTime = perfData.loadEventEnd - perfData.navigationStart;
-        const metric = document.getElementById("loadTimeMetric");
-        if (metric && pageLoadTime > 0) {
-          metric.textContent = `${pageLoadTime} ms`;
-        }
-      }, 0);
-    });
-  </script>
+  function renderEntries() {
+    $entries.innerHTML = "";
+    if (currentEntries.length === 0 && !sending) {
+      $entries.appendChild($emptyMsg);
+      return;
+    }
+    for (const entry of currentEntries) {
+      const div = document.createElement("div");
+      div.className = "bubble " + entry.role;
+      div.textContent = entry.text;
+      $entries.appendChild(div);
+    }
+    if (sending) {
+      const div = document.createElement("div");
+      div.className = "bubble model typing";
+      div.textContent = "…";
+      $entries.appendChild(div);
+    }
+    $entries.scrollTop = $entries.scrollHeight;
+  }
+
+  // -- Sending a message: save turn, call the Cloud Function, save reply --
+  $composer.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const user = auth.currentUser;
+    const message = $draft.value.trim();
+    if (!message || sending || !user) return;
+
+    $draft.value = "";
+    sending = true;
+    $sendBtn.disabled = true;
+    $error.style.display = "none";
+    renderEntries();
+
+    const history = currentEntries.map((e) => ({ role: e.role, text: e.text }));
+
+    try {
+      await saveEntry(user.uid, "user", message);
+      const { data } = await chatWithGemini({ message, history });
+      await saveEntry(user.uid, "model", data.reply);
+    } catch (err) {
+      console.error(err);
+      $error.textContent = "Something went wrong sending that. Try again.";
+      $error.style.display = "block";
+    } finally {
+      sending = false;
+      $sendBtn.disabled = false;
+      renderEntries();
+    }
+  });
+
+  $draft.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      $composer.requestSubmit();
+    }
+  });
+</script>
 </body>
 </html>
