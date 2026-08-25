@@ -1,558 +1,384 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Personal AI Workspace</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Split-Flap Departure Board</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-gradient: radial-gradient(circle at 15% 15%, #1e1b4b 0%, #0f172a 50%, #020617 100%);
-      --glass-bg: rgba(30, 41, 59, 0.7);
-      --glass-border: rgba(255, 255, 255, 0.12);
-      --accent-primary: #6366f1;
-      --accent-hover: #4f46e5;
-      --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
-      --card-bg: rgba(15, 23, 42, 0.6);
-      --success: #10b981;
-      --danger: #ef4444;
-      --radius-lg: 24px;
-      --radius-md: 14px;
+      --bg-color: #0b0f19;
+      --card-bg: #161b26;
+      --board-border: #232936;
+      --tile-bg: #1c2230;
+      --tile-text: #f3f4f6;
+      --tile-border: #0a0d14;
+      --accent: #6366f1;
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-family: 'Share Tech Mono', monospace;
     }
 
     body {
-      background: var(--bg-gradient);
-      color: var(--text-main);
+      background-color: var(--bg-color);
+      color: var(--tile-text);
       min-height: 100vh;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      overflow-x: hidden;
-      position: relative;
+      padding: 2rem 1rem;
     }
 
-    /* Ambient Glowing Orbs */
-    .orb {
-      position: fixed;
-      border-radius: 50%;
-      filter: blur(100px);
-      z-index: 0;
-      pointer-events: none;
-      opacity: 0.5;
-      animation: float 10s infinite alternate ease-in-out;
-    }
-    .orb-1 { width: 400px; height: 400px; background: #6366f1; top: -100px; left: -100px; }
-    .orb-2 { width: 350px; height: 350px; background: #ec4899; bottom: -50px; right: -50px; animation-delay: -5s; }
-
-    @keyframes float {
-      0% { transform: translate(0, 0) scale(1); }
-      100% { transform: translate(40px, 40px) scale(1.1); }
-    }
-
-    /* View Controller */
-    .view {
-      display: none;
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+      max-width: 900px;
       width: 100%;
-      max-width: 1100px;
-      margin: 20px;
-      position: relative;
-      z-index: 1;
-      opacity: 0;
-      transform: translateY(20px) scale(0.98);
-      transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .view.active {
-      display: block;
-      opacity: 1;
-      transform: translateY(0) scale(1);
+    /* Mechanical Board Frame */
+    .board-frame {
+      background: var(--card-bg);
+      border: 3px solid var(--board-border);
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), inset 0 0 15px rgba(0, 0, 0, 0.5);
+      width: 100%;
+      overflow-x: auto;
     }
 
-    /* Glass Container */
-    .glass-card {
-      background: var(--glass-bg);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid var(--glass-border);
-      border-radius: var(--radius-lg);
-      padding: 40px;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 1px 0 rgba(255, 255, 255, 0.1);
-    }
-
-    /* Auth Page Specifics */
-    .auth-container {
-      max-width: 440px;
+    .board-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: max-content;
       margin: 0 auto;
     }
 
-    .auth-header {
-      text-align: center;
-      margin-bottom: 32px;
+    .board-row {
+      display: flex;
+      gap: 5px;
+      justify-content: center;
     }
 
-    .auth-header h1 {
+    /* Individual Split Flap Tile */
+    .flap-tile {
+      position: relative;
+      width: 32px;
+      height: 48px;
+      background: var(--tile-bg);
+      border-radius: 4px;
       font-size: 28px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      background: linear-gradient(to right, #ffffff, #cbd5e1);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 8px;
+      font-weight: bold;
+      line-height: 48px;
+      text-align: center;
+      color: var(--tile-text);
+      perspective: 300px;
+      user-select: none;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
     }
 
-    .auth-header p {
-      color: var(--text-muted);
-      font-size: 14px;
-    }
-
-    .form-group {
-      margin-bottom: 20px;
-    }
-
-    .form-group label {
-      display: block;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-    }
-
-    .form-control {
+    /* Center Split Line */
+    .flap-tile::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 0;
       width: 100%;
-      padding: 14px 18px;
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid var(--glass-border);
-      border-radius: var(--radius-md);
-      color: #fff;
-      font-size: 15px;
-      transition: all 0.25s ease;
-      outline: none;
+      height: 1px;
+      background: var(--tile-border);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.05);
+      z-index: 5;
     }
 
-    .form-control:focus {
-      border-color: var(--accent-primary);
-      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
-      background: rgba(15, 23, 42, 0.9);
+    /* 3D Flip Animation */
+    .flap-tile.flipping {
+      animation: flip-flap 0.12s linear;
     }
 
-    .btn-primary {
-      width: 100%;
-      padding: 14px;
-      background: var(--accent-gradient);
-      border: none;
-      border-radius: var(--radius-md);
-      color: #fff;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.4);
-      transition: all 0.25s ease;
+    @keyframes flip-flap {
+      0% {
+        transform: rotateX(0deg);
+        filter: brightness(1);
+      }
+      50% {
+        transform: rotateX(-90deg);
+        filter: brightness(0.6);
+      }
+      100% {
+        transform: rotateX(0deg);
+        filter: brightness(1);
+      }
+    }
+
+    /* Controls Panel */
+    .controls {
       display: flex;
-      align-items: center;
+      flex-wrap: wrap;
       justify-content: center;
-      gap: 8px;
-    }
-
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 15px 25px -5px rgba(99, 102, 241, 0.5);
-    }
-
-    .btn-primary:active {
-      transform: translateY(0);
-    }
-
-    /* Dashboard Layout */
-    .dashboard-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-bottom: 24px;
-      border-bottom: 1px solid var(--glass-border);
-      margin-bottom: 30px;
-    }
-
-    .profile-badge {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .avatar {
-      width: 46px;
-      height: 46px;
-      border-radius: 50%;
-      background: var(--accent-gradient);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 18px;
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
-    }
-
-    .btn-secondary {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid var(--glass-border);
-      padding: 10px 18px;
-      border-radius: var(--radius-md);
-      color: var(--text-main);
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.15);
-      border-color: rgba(255, 255, 255, 0.25);
-    }
-
-    /* Grid & Widgets */
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-    }
-
-    @media (max-width: 768px) {
-      .dashboard-grid { grid-template-columns: 1fr; }
-    }
-
-    .widget-box {
-      background: var(--card-bg);
-      border: 1px solid var(--glass-border);
-      border-radius: var(--radius-md);
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      height: 380px;
-    }
-
-    .widget-title {
-      font-size: 16px;
-      font-weight: 700;
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .chat-history {
-      flex: 1;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
       gap: 12px;
-      padding-right: 6px;
-      margin-bottom: 16px;
+      width: 100%;
     }
 
-    .msg {
-      max-width: 80%;
-      padding: 10px 14px;
-      border-radius: 12px;
+    button {
+      background: var(--card-bg);
+      color: var(--tile-text);
+      border: 1px solid var(--board-border);
+      padding: 10px 18px;
+      border-radius: 6px;
+      cursor: pointer;
       font-size: 14px;
-      line-height: 1.4;
-      animation: messagePop 0.2s ease-out;
-    }
-
-    @keyframes messagePop {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .msg.user {
-      align-self: flex-end;
-      background: var(--accent-gradient);
-      color: #fff;
-    }
-
-    .msg.bot {
-      align-self: flex-start;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid var(--glass-border);
-    }
-
-    .input-wrapper {
-      display: flex;
-      gap: 10px;
-    }
-
-    /* Task List */
-    .task-list {
-      flex: 1;
-      overflow-y: auto;
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-bottom: 16px;
-    }
-
-    .task-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 14px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid var(--glass-border);
-      border-radius: 10px;
+      letter-spacing: 1px;
       transition: all 0.2s ease;
     }
 
-    .task-item:hover {
-      background: rgba(255, 255, 255, 0.08);
+    button:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
     }
 
-    .task-item.completed span {
-      text-decoration: line-through;
-      color: var(--text-muted);
+    /* Custom Message Input Bar */
+    .input-bar {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+      max-width: 600px;
     }
 
-    .task-item button {
-      background: none;
-      border: none;
-      color: var(--danger);
-      cursor: pointer;
-      font-size: 16px;
-      padding: 4px;
+    input[type="text"] {
+      flex: 1;
+      background: var(--card-bg);
+      border: 1px solid var(--board-border);
+      padding: 10px 16px;
+      border-radius: 6px;
+      color: #fff;
+      outline: none;
+      font-size: 14px;
+      letter-spacing: 1px;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--accent);
     }
   </style>
 </head>
 <body>
 
-  <div class="orb orb-1"></div>
-  <div class="orb orb-2"></div>
-
-  <!-- AUTHENTICATION VIEW -->
-  <div id="authView" class="view active">
-    <div class="glass-card auth-container">
-      <div class="auth-header">
-        <h1>Welcome Back</h1>
-        <p>Sign in to access your local workspace</p>
-      </div>
-      <form id="authForm" onsubmit="handleAuth(event)">
-        <div class="form-group">
-          <label>Full Name or Username</label>
-          <input type="text" id="username" class="form-control" placeholder="e.g. Ishaan Thusoo" required />
-        </div>
-        <div class="form-group">
-          <label>Password</label>
-          <input type="password" id="password" class="form-control" placeholder="••••••••" required />
-        </div>
-        <button type="submit" class="btn-primary">
-          Sign In
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-        </button>
-      </form>
+  <div class="container">
+    <div class="board-frame">
+      <div id="board" class="board-grid"></div>
     </div>
-  </div>
 
-  <!-- MAIN DASHBOARD VIEW -->
-  <div id="dashboardView" class="view">
-    <div class="glass-card">
-      <div class="dashboard-header">
-        <div class="profile-badge">
-          <div class="avatar" id="avatarIcon">U</div>
-          <div>
-            <h2 id="userNameDisplay" style="font-size: 18px; font-weight: 700;">Workspace User</h2>
-            <span style="font-size: 13px; color: var(--success); display: flex; align-items: center; gap: 5px;">
-              ● Local Engine Active
-            </span>
-          </div>
-        </div>
-        <button onclick="handleLogout()" class="btn-secondary">Log Out</button>
-      </div>
+    <!-- Interactive Controls Panel -->
+    <div class="controls">
+      <button id="prevBtn">◄ PREV</button>
+      <button id="toggleBtn">❚❚ PAUSE</button>
+      <button id="nextBtn">NEXT ►</button>
+      <button id="audioToggle">🔊 SOUND: ON</button>
+    </div>
 
-      <div class="dashboard-grid">
-        <!-- Interactive Local Bot (No API) -->
-        <div class="widget-box">
-          <div class="widget-title">
-            <span>Offline Intelligent Agent</span>
-            <span style="font-size: 11px; color: var(--text-muted);">Self-Contained</span>
-          </div>
-          <div class="chat-history" id="chatHistory">
-            <div class="msg bot">Hello! I am your local offline assistant. Ask me anything or run quick math computations.</div>
-          </div>
-          <div class="input-wrapper">
-            <input type="text" id="chatInput" class="form-control" placeholder="Type a message or calculation..." onkeydown="if(event.key === 'Enter') sendLocalMessage()" />
-            <button class="btn-primary" style="width: auto; padding: 0 18px;" onclick="sendLocalMessage()">Send</button>
-          </div>
-        </div>
-
-        <!-- Local Task Board -->
-        <div class="widget-box">
-          <div class="widget-title">
-            <span>Project Tasks</span>
-            <span id="taskCount" style="font-size: 12px; color: var(--accent-primary); font-weight: 600;">0 Tasks</span>
-          </div>
-          <ul class="task-list" id="taskList"></ul>
-          <div class="input-wrapper">
-            <input type="text" id="taskInput" class="form-control" placeholder="New task..." onkeydown="if(event.key === 'Enter') addTask()" />
-            <button class="btn-primary" style="width: auto; padding: 0 18px;" onclick="addTask()">Add</button>
-          </div>
-        </div>
-      </div>
+    <!-- Custom Broadcast Message Input -->
+    <div class="input-bar">
+      <input type="text" id="customInput" placeholder="Type custom message & press Enter..." maxlength="44" />
+      <button id="sendBtn">SET TEXT</button>
     </div>
   </div>
 
   <script>
-    // Navigation / Page Transition Handler
-    function showPage(pageId) {
-      document.querySelectorAll('.view').forEach(view => {
-        view.classList.remove('active');
-      });
-      setTimeout(() => {
-        const target = document.getElementById(pageId);
-        if (target) {
-          target.classList.add('active');
-        }
-      }, 50);
-    }
+    const MESSAGES = [
+      "STAY HUNGRY \nSTAY IN BED \n- STEVE JOBS",
+      "What did you get done this week?",
+      "I burned $20 \nfor this shit.",
+      "DONT WORRY \nBE HAPPY FFS.",
+      "LADIES AND GENTLEMEN \nWELCOME TO F#!@# C!@$"
+    ];
 
-    // Authentication Logic (Purely Client-Side, No APIs)
-    function handleAuth(event) {
-      event.preventDefault();
-      const userField = document.getElementById('username').value.trim();
-      if (!userField) return;
+    const ROWS = 3;
+    const COLS = 22;
+    const CHAR_SET = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,!?:;/@#$%^&*()-_+=$";
 
-      localStorage.setItem('local_app_user', userField);
-      loadDashboard(userField);
-      showPage('dashboardView');
-    }
+    let currentMessageIndex = 0;
+    let isAutoPlaying = true;
+    let intervalTimer = null;
+    let isAudioEnabled = true;
+    let currentMatrix = Array.from({ length: ROWS }, () => Array(COLS).fill(" "));
 
-    function handleLogout() {
-      localStorage.removeItem('local_app_user');
-      document.getElementById('username').value = '';
-      document.getElementById('password').value = '';
-      showPage('authView');
-    }
+    const boardElement = document.getElementById("board");
+    const toggleBtn = document.getElementById("toggleBtn");
+    const audioToggle = document.getElementById("audioToggle");
+    const customInput = document.getElementById("customInput");
 
-    function loadDashboard(name) {
-      document.getElementById('userNameDisplay').innerText = name;
-      document.getElementById('avatarIcon').innerText = name.charAt(0).toUpperCase();
-      renderTasks();
-    }
-
-    // Local Logic Bot (Rule-based & arithmetic engine, zero API calls)
-    function sendLocalMessage() {
-      const input = document.getElementById('chatInput');
-      const text = input.value.trim();
-      if (!text) return;
-
-      const history = document.getElementById('chatHistory');
+    // Synthesized Mechanical Click Audio using Web Audio API
+    let audioCtx = null;
+    function playFlapSound() {
+      if (!isAudioEnabled) return;
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       
-      // Render user message
-      const userMsg = document.createElement('div');
-      userMsg.className = 'msg user';
-      userMsg.innerText = text;
-      history.appendChild(userMsg);
-      input.value = '';
-
-      // Generate local response
-      setTimeout(() => {
-        const botMsg = document.createElement('div');
-        botMsg.className = 'msg bot';
-        botMsg.innerText = generateLocalResponse(text);
-        history.appendChild(botMsg);
-        history.scrollTop = history.scrollHeight;
-      }, 300);
-
-      history.scrollTop = history.scrollHeight;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.04);
+      
+      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.04);
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.04);
     }
 
-    function generateLocalResponse(query) {
-      const lower = query.toLowerCase();
-
-      // Math Evaluator
-      try {
-        if (/^[0-9+\-*/().\s^%]+$/.test(query) && query.length > 1) {
-          return `Result: ${Function('"use strict"; return (' + query + ')')()}`;
+    // Build the grid of tiles
+    function initializeBoard() {
+      boardElement.innerHTML = "";
+      for (let r = 0; r < ROWS; r++) {
+        const rowDiv = document.createElement("div");
+        rowDiv.className = "board-row";
+        for (let c = 0; c < COLS; c++) {
+          const tile = document.createElement("div");
+          tile.className = "flap-tile";
+          tile.id = `tile-${r}-${c}`;
+          tile.textContent = " ";
+          rowDiv.appendChild(tile);
         }
-      } catch (e) {}
-
-      if (lower.includes('hello') || lower.includes('hi')) return "Greetings! How can I assist you with your local tasks today?";
-      if (lower.includes('time')) return `Current local time is: ${new Date().toLocaleTimeString()}`;
-      if (lower.includes('date')) return `Today's date is: ${new Date().toLocaleDateString()}`;
-      if (lower.includes('clear')) {
-        document.getElementById('chatHistory').innerHTML = '';
-        return "Chat cleared.";
+        boardElement.appendChild(rowDiv);
       }
-      return `Processed offline: "${query}". (Running locally with zero external network calls).`;
     }
 
-    // Task Management Logic (Local Storage)
-    function getTasks() {
-      return JSON.parse(localStorage.getItem('local_tasks') || '[]');
-    }
+    // Format any text string to match the ROWS x COLS grid
+    function formatMessageToMatrix(text) {
+      const lines = text.toUpperCase().split("\n");
+      const matrix = [];
 
-    function saveTasks(tasks) {
-      localStorage.setItem('local_tasks', JSON.stringify(tasks));
-      renderTasks();
-    }
-
-    function addTask() {
-      const input = document.getElementById('taskInput');
-      const text = input.value.trim();
-      if (!text) return;
-
-      const tasks = getTasks();
-      tasks.push({ id: Date.now(), text: text, completed: false });
-      saveTasks(tasks);
-      input.value = '';
-    }
-
-    function toggleTask(id) {
-      const tasks = getTasks().map(t => t.id === id ? { ...t, completed: !t.completed } : t);
-      saveTasks(tasks);
-    }
-
-    function deleteTask(id) {
-      const tasks = getTasks().filter(t => t.id !== id);
-      saveTasks(tasks);
-    }
-
-    function renderTasks() {
-      const tasks = getTasks();
-      const list = document.getElementById('taskList');
-      const count = document.getElementById('taskCount');
-      list.innerHTML = '';
-      count.innerText = `${tasks.length} Tasks`;
-
-      tasks.forEach(task => {
-        const li = document.createElement('li');
-        li.className = `task-item ${task.completed ? 'completed' : ''}`;
-        li.innerHTML = `
-          <span style="cursor: pointer;" onclick="toggleTask(${task.id})">
-            ${task.completed ? '✓ ' : '○ '} ${task.text}
-          </span>
-          <button onclick="deleteTask(${task.id})">✕</button>
-        `;
-        list.appendChild(li);
-      });
-    }
-
-    // Auto-login persistence check
-    window.addEventListener('DOMContentLoaded', () => {
-      const savedUser = localStorage.getItem('local_app_user');
-      if (savedUser) {
-        loadDashboard(savedUser);
-        showPage('dashboardView');
+      for (let r = 0; r < ROWS; r++) {
+        const line = lines[r] || "";
+        const rowChars = line.padEnd(COLS, " ").slice(0, COLS).split("");
+        matrix.push(rowChars);
       }
+      return matrix;
+    }
+
+    // Flips a single tile progressively through the character set
+    function animateTile(r, c, targetChar) {
+      const tile = document.getElementById(`tile-${r}-${c}`);
+      let currentChar = currentMatrix[r][c];
+
+      if (currentChar === targetChar) return;
+
+      let currentIndex = CHAR_SET.indexOf(currentChar);
+      if (currentIndex === -1) currentIndex = 0;
+
+      const targetIndex = CHAR_SET.indexOf(targetChar) === -1 ? 0 : CHAR_SET.indexOf(targetChar);
+
+      function step() {
+        currentIndex = (currentIndex + 1) % CHAR_SET.length;
+        const nextChar = CHAR_SET[currentIndex];
+
+        tile.textContent = nextChar;
+        tile.classList.remove("flipping");
+        void tile.offsetWidth; // Reflow for animation
+        tile.classList.add("flipping");
+
+        if (Math.random() > 0.6) playFlapSound();
+
+        if (nextChar !== targetChar) {
+          setTimeout(step, 40 + Math.random() * 20);
+        } else {
+          currentMatrix[r][c] = targetChar;
+          tile.classList.remove("flipping");
+        }
+      }
+
+      step();
+    }
+
+    // Update entire board to target message
+    function setMessage(text) {
+      const targetMatrix = formatMessageToMatrix(text);
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const delay = (r * COLS + c) * 15; // Stagger effect
+          setTimeout(() => {
+            animateTile(r, c, targetMatrix[r][c]);
+          }, delay);
+        }
+      }
+    }
+
+    function showNextMessage() {
+      currentMessageIndex = (currentMessageIndex + 1) % MESSAGES.length;
+      setMessage(MESSAGES[currentMessageIndex]);
+    }
+
+    function showPrevMessage() {
+      currentMessageIndex = (currentMessageIndex - 1 + MESSAGES.length) % MESSAGES.length;
+      setMessage(MESSAGES[currentMessageIndex]);
+    }
+
+    function startAutoPlay() {
+      clearInterval(intervalTimer);
+      intervalTimer = setInterval(showNextMessage, 6000);
+      toggleBtn.textContent = "❚❚ PAUSE";
+      isAutoPlaying = true;
+    }
+
+    function stopAutoPlay() {
+      clearInterval(intervalTimer);
+      toggleBtn.textContent = "► PLAY";
+      isAutoPlaying = false;
+    }
+
+    // Event Listeners
+    toggleBtn.addEventListener("click", () => {
+      if (isAutoPlaying) stopAutoPlay();
+      else startAutoPlay();
     });
+
+    document.getElementById("nextBtn").addEventListener("click", () => {
+      showNextMessage();
+      if (isAutoPlaying) startAutoPlay();
+    });
+
+    document.getElementById("prevBtn").addEventListener("click", () => {
+      showPrevMessage();
+      if (isAutoPlaying) startAutoPlay();
+    });
+
+    audioToggle.addEventListener("click", () => {
+      isAudioEnabled = !isAudioEnabled;
+      audioToggle.textContent = isAudioEnabled ? "🔊 SOUND: ON" : "🔇 SOUND: OFF";
+    });
+
+    function applyCustomText() {
+      const val = customInput.value.trim();
+      if (val) {
+        stopAutoPlay();
+        setMessage(val);
+      }
+    }
+
+    document.getElementById("sendBtn").addEventListener("click", applyCustomText);
+    customInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") applyCustomText();
+    });
+
+    // Initialize board on load
+    initializeBoard();
+    setMessage(MESSAGES[0]);
+    startAutoPlay();
   </script>
 </body>
 </html>
