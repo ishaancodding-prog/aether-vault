@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personal Secure Gemini Journal</title>
+  <style>
+    :root { --bg: #0f172a; --panel: #1e293b; --text: #f8fafc; --accent: #3b82f6; --border: #334155; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); max-width: 800px; margin: 40px auto; padding: 0 16px; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+    .chat-box { height: 320px; overflow-y: auto; border: 1px solid var(--border); padding: 12px; margin-bottom: 12px; border-radius: 6px; background: #020617; }
+    .msg { margin: 8px 0; line-height: 1.5; }
+    .msg.user { color: #60a5fa; font-weight: 600; }
+    .msg.ai { color: #e2e8f0; }
+    input, textarea, button { width: 100%; box-sizing: border-box; margin-top: 8px; padding: 10px; border-radius: 6px; border: 1px solid var(--border); background: #0b0f19; color: #fff; }
+    button { background: var(--accent); font-weight: 600; cursor: pointer; border: none; }
+    button:hover { opacity: 0.9; }
+    .btn-secondary { background: #475569; }
+    .hidden { display: none; }
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; background: #059669; }
+    .row { display: flex; gap: 10px; }
+  </style>
+</head>
+<body>
+
+  <h2>🔐 Zero-Trust Gemini Journal</h2>
+
+  <!-- Auth Panel -->
+  <div id="auth-panel" class="card">
+    <h3>1. Authentication</h3>
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <button id="btn-login">Sign In / Register</button>
+  </div>
+
+  <!-- Vault Unlock / Setup Panel -->
+  <div id="vault-panel" class="card hidden">
+    <h3>2. Security Enclave (Hardware PRF + Recovery)</h3>
+    <div id="vault-status" style="margin-bottom: 12px;">Checking vault status...</div>
+    
+    <div id="setup-section" class="hidden">
+      <p>Configure your biometric passkey + emergency recovery passphrase to generate your zero-knowledge DEK.</p>
+      <input type="password" id="init-passphrase" placeholder="Emergency Recovery Passphrase" />
+      <button id="btn-setup-vault">Register Biometric Passkey & Init Vault</button>
+    </div>
+
+    <div id="unlock-section" class="hidden">
+      <button id="btn-unlock-bio">🔓 Unlock with Biometrics (Touch ID / Windows Hello)</button>
+      <div style="text-align: center; margin: 10px 0;">— OR —</div>
+      <input type="password" id="recovery-passphrase" placeholder="Enter Recovery Passphrase" />
+      <button id="btn-unlock-recovery" class="btn-secondary">Recover with Passphrase</button>
+    </div>
+  </div>
+
+  <!-- Journaling Application -->
+  <div id="journal-panel" class="card hidden">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <div><strong>Status:</strong> <span class="badge">Hardware Key In-Memory</span></div>
+      <button id="btn-lock" style="width: auto; padding: 6px 12px;" class="btn-secondary">Lock & Sign Out</button>
+    </div>
+
+    <div id="chat-window" class="chat-box"></div>
+    <textarea id="prompt-input" rows="3" placeholder="Write your reflection or prompt..."></textarea>
+    <div class="row">
+      <button id="btn-send">Send to Gemini</button>
+      <button id="btn-save-journal" style="background: #059669;">Encrypt & Save Entry</button>
+    </div>
+
+    <h3 style="margin-top: 24px;">Past Encrypted Entries</h3>
+    <div id="history-list"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, collection, addDoc, getDocs, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
+
+    // --- CONFIGURE YOUR FIREBASE SETTINGS ---
+    const firebaseConfig = {
+      apiKey: "YOUR_FIREBASE_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com"
+    };
+
+    const BACKEND_URL = "https://YOUR_REGION-YOUR_PROJECT_ID.cloudfunctions.net/journalChat";
+    const PRF_SALT = new TextEncoder().encode("gemini-journal-prf-salt-v1-00000");
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let activeDEK = null;
+    let chatHistory = [];
+
+    // --- CRYPTOGRAPHY & WEBAUTHN MODULE ---
+    const bufferToBase64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const base64ToBuffer = (str) => Uint8Array.from(atob(str.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)).buffer;
+
+    async function deriveKekFromPrf(prfBytes) {
+      const baseKey = await crypto.subtle.importKey("raw", prfBytes, "HKDF", false, ["deriveKey"]);
+      return crypto.subtle.deriveKey(
+        { name: "HKDF", hash: "SHA-256", salt: new Uint8Array(), info: new TextEncoder().encode("biometric-kek-v1") },
+        baseKey, { name: "AES-KW", length: 256 }, false, ["wrapKey", "unwrapKey"]
+      );
+    }
+
+    async function deriveKekFromPassphrase(passphrase, salt) {
+      const enc = new TextEncoder();
+      const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(passphrase), "PBKDF2", false, ["deriveKey"]);
+      return crypto.subtle.deriveKey(
+        { name: "PBKDF2", salt, iterations: 310000, hash: "SHA-256" },
+        keyMaterial, { name: "AES-KW", length: 256 }, false, ["wrapKey", "unwrapKey"]
+      );
+    }
+
+    async function encryptEntry(data, dek) {
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const encoded = new TextEncoder().encode(JSON.stringify(data));
+      const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, dek, encoded);
+      return { encryptedData: bufferToBase64(ciphertext), iv: bufferToBase64(iv) };
+    }
+
+    async function decryptEntry(encryptedBase64, ivBase64, dek) {
+      const decrypted = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: base64ToBuffer(ivBase64) },
+        dek,
+        base64ToBuffer(encryptedBase64)
+      );
+      return JSON.parse(new TextDecoder().decode(decrypted));
+    }
+
+    // --- UI FLOW & STATE MANAGEMENT ---
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        document.getElementById("auth-panel").classList.add("hidden");
+        document.getElementById("vault-panel").classList.remove("hidden");
+        await checkVaultStatus(user.uid);
+      } else {
+        document.getElementById("auth-panel").classList.remove("hidden");
+        document.getElementById("vault-panel").classList.add("hidden");
+        document.getElementById("journal-panel").classList.add("hidden");
+        activeDEK = null;
+      }
+    });
+
+    async function checkVaultStatus(uid) {
+      const snap = await getDoc(doc(db, "users", uid));
+      if (!snap.exists() || !snap.data().vaultConfig) {
+        document.getElementById("setup-section").classList.remove("hidden");
+        document.getElementById("unlock-section").classList.add("hidden");
+        document.getElementById("vault-status").innerText = "No vault found. Initialize below:";
+      } else {
+        document.getElementById("setup-section").classList.add("hidden");
+        document.getElementById("unlock-section").classList.remove("hidden");
+        document.getElementById("vault-status").innerText = "Vault encrypted. Choose unlock method:";
+      }
+    }
+
+    // Sign in / Sign up
+    document.getElementById("btn-login").onclick = async () => {
+      const email = document.getElementById("email").value;
+      const pass = document.getElementById("password").value;
+      try {
+        await signInWithEmailAndPassword(auth, email, pass);
+      } catch {
+        await createUserWithEmailAndPassword(auth, email, pass);
+      }
+    };
+
+    // Setup Vault: WebAuthn PRF + Passphrase
+    document.getElementById("btn-setup-vault").onclick = async () => {
+      const pass = document.getElementById("init-passphrase").value;
+      if (!pass) return alert("Please specify a recovery passphrase");
+
+      const user = auth.currentUser;
+      const cred = await navigator.credentials.create({
+        publicKey: {
+          challenge: crypto.getRandomValues(new Uint8Array(32)),
+          rp: { name: "Gemini Journal", id: window.location.hostname },
+          user: { id: new TextEncoder().encode(user.uid), name: user.email, displayName: user.email },
+          pubKeyCredParams: [{ alg: -7, type: "public-key" }],
+          authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required" },
+          extensions: { prf: { eval: { first: PRF_SALT } } }
+        }
+      });
+
+      const prfBytes = cred.getClientExtensionResults().prf.results.first;
+      const dek = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
+      
+      const bioKek = await deriveKekFromPrf(prfBytes);
+      const wrappedBio = await crypto.subtle.wrapKey("raw", dek, bioKek, { name: "AES-KW" });
+
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const passKek = await deriveKekFromPassphrase(pass, salt);
+      const wrappedPass = await crypto.subtle.wrapKey("raw", dek, passKek, { name: "AES-KW" });
+
+      localStorage.setItem(`cred_id_${user.uid}`, bufferToBase64(cred.rawId));
+      await setDoc(doc(db, "users", user.uid), {
+        vaultConfig: {
+          wrappedDEK_Bio: bufferToBase64(wrappedBio),
+          wrappedDEK_Pass: bufferToBase64(wrappedPass),
+          passphraseSalt: bufferToBase64(salt)
+        }
+      }, { merge: true });
+
+      activeDEK = dek;
+      openJournal();
+    };
+
+    // Unlock with Biometrics
+    document.getElementById("btn-unlock-bio").onclick = async () => {
+      const user = auth.currentUser;
+      const credId = localStorage.getItem(`cred_id_${user.uid}`);
+      const snap = await getDoc(doc(db, "users", user.uid));
+      const config = snap.data().vaultConfig;
+
+      const assertion = await navigator.credentials.get({
+        publicKey: {
+          challenge: crypto.getRandomValues(new Uint8Array(32)),
+          rpId: window.location.hostname,
+          allowCredentials: [{ id: base64ToBuffer(credId), type: "public-key" }],
+          userVerification: "required",
+          extensions: { prf: { eval: { first: PRF_SALT } } }
+        }
+      });
+
+      const prfBytes = assertion.getClientExtensionResults().prf.results.first;
+      const bioKek = await deriveKekFromPrf(prfBytes);
+      activeDEK = await crypto.subtle.unwrapKey(
+        "raw", base64ToBuffer(config.wrappedDEK_Bio), bioKek, { name: "AES-KW" }, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]
+      );
+      openJournal();
+    };
+
+    // Recover with Passphrase
+    document.getElementById("btn-unlock-recovery").onclick = async () => {
+      const pass = document.getElementById("recovery-passphrase").value;
+      const snap = await getDoc(doc(db, "users", auth.currentUser.uid));
+      const config = snap.data().vaultConfig;
+
+      const passKek = await deriveKekFromPassphrase(pass, base64ToBuffer(config.passphraseSalt));
+      activeDEK = await crypto.subtle.unwrapKey(
+        "raw", base64ToBuffer(config.wrappedDEK_Pass), passKek, { name: "AES-KW" }, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]
+      );
+      openJournal();
+    };
+
+    function openJournal() {
+      document.getElementById("vault-panel").classList.add("hidden");
+      document.getElementById("journal-panel").classList.remove("hidden");
+      loadHistory();
+    }
+
+    // Gemini Chat Interaction
+    document.getElementById("btn-send").onclick = async () => {
+      const promptInput = document.getElementById("prompt-input");
+      const prompt = promptInput.value.trim();
+      if (!prompt) return;
+
+      const chatWindow = document.getElementById("chat-window");
+      chatWindow.innerHTML += `<div class="msg user">You: ${prompt}</div>`;
+      promptInput.value = "";
+
+      const token = await auth.currentUser.getIdToken();
+      const res = await fetch(BACKEND_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ prompt, history: chatHistory })
+      });
+      const data = await res.json();
+      
+      chatWindow.innerHTML += `<div class="msg ai">Gemini: ${data.reply}</div>`;
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+
+      chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+      chatHistory.push({ role: "model", parts: [{ text: data.reply }] });
+    };
+
+    // Save Encrypted Entry to Firestore
+    document.getElementById("btn-save-journal").onclick = async () => {
+      if (!chatHistory.length) return alert("Chat history is empty.");
+      const payload = await encryptEntry(chatHistory, activeDEK);
+      const user = auth.currentUser;
+
+      await addDoc(collection(db, "users", user.uid, "journals"), {
+        userId: user.uid,
+        ...payload,
+        createdAt: serverTimestamp()
+      });
+
+      alert("Entry encrypted with your hardware-backed DEK and saved to Firestore.");
+      loadHistory();
+    };
+
+    async function loadHistory() {
+      const historyList = document.getElementById("history-list");
+      historyList.innerHTML = "";
+      const q = query(collection(db, "users", auth.currentUser.uid, "journals"), orderBy("createdAt", "desc"));
+      const snap = await getDocs(q);
+
+      snap.forEach(async (docSnap) => {
+        const item = docSnap.data();
+        try {
+          const decrypted = await decryptEntry(item.encryptedData, item.iv, activeDEK);
+          const firstExchange = decrypted[0]?.parts[0]?.text || "Saved Session";
+          historyList.innerHTML += `<div class="card" style="padding: 10px; font-size: 14px;"><strong>${docSnap.id}</strong>: ${firstExchange}</div>`;
+        } catch {
+          historyList.innerHTML += `<div class="card" style="padding: 10px; font-size: 14px; color: #f87171;">Decryption Failed (Invalid Key)</div>`;
+        }
+      });
+    }
+
+    document.getElementById("btn-lock").onclick = () => signOut(auth);
+  </script>
+</body>
+</html>
